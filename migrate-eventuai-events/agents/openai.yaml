@@ -1,0 +1,4 @@
+interface:
+  display_name: "Migrate Eventuai Events"
+  short_description: "Migrate legacy Eventuai event admin"
+  default_prompt: "Use $migrate-eventuai-events to migrate a legacy Eventuai event admin route or view into the CMS events plugin."
