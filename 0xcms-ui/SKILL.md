@@ -7,6 +7,10 @@ description: 0xCMS admin UI conventions for Cloudflare Worker CMS and plugins. U
 
 Use this skill to preserve the established 0xCMS admin interface patterns while editing CMS core and plugin views. Prefer matching the existing good view over inventing a new local variation.
 
+Treat `/Users/colin/Documents/code/workers/cms` as the current host source.
+Use `/Users/colin/Documents/code/frameworks/zeroxcms/cms` only when the task
+explicitly targets the older pre-feature-slice copy.
+
 ## Core Workflow
 
 1. Identify the closest good existing view before editing. Common references:
@@ -86,7 +90,10 @@ Prefer shared CMS snippets over plugin-local copies when the control is common a
 
 ### Pagefield Renderers
 
-Common plugin form fields should use Worker CMS pagefield snippets under `cms/views/snippets/pagefield/<type>/<variant>.liquid`. Field view models should set `templateName` to the shared snippet path, and plugin Liquid views should render it directly:
+Common plugin form fields should use Worker CMS pagefield snippets under
+`/Users/colin/Documents/code/workers/cms/views/snippets/pagefield/<type>/<variant>.liquid`.
+Field view models should set `templateName` to the shared snippet path, and
+plugin Liquid views should render it directly:
 
 ```liquid
 {% render field.templateName, field: field %}
@@ -112,8 +119,12 @@ Use the CMS snippet at `/Users/colin/Documents/code/workers/cms/views/snippets/c
 Keep this UI contract:
 - The trigger is a borderless `h-7 w-7` swatch. The menu opens as a horizontal panel to the right, vertically centered (`left-5 top-1/2 -translate-y-1/2`) with slight overlap so hover/focus stays connected.
 - Do not put the picker inside a clipped table cell. Truncate inner text nodes instead of the parent cell, and use `items-center` when the picker sits beside name/email text.
-- Color variables and the empty-state dashed dot live in `cms/src/styles/admin.css`; rebuild `cms/views/assets/admin.css` with `npm run build:css` after style or utility-class changes.
-- Behavior lives in `cms/views/assets/color-tag.js`; keep `data-color-tag-*` attributes intact so AJAX submit updates the swatch and nearby `data-filter-color` rows.
+- Color variables and the empty-state dashed dot live in
+  `cms/assets-source/admin.css`; rebuild `cms/views/assets/admin.css` with
+  `npm run build:css` after style or utility-class changes.
+- Behavior lives in `cms/views/assets/color-tag.js`; keep
+  `data-color-tag-*` attributes intact so AJAX submit updates the swatch and
+  nearby `data-filter-color` rows.
 
 For client-rendered plugin views, redirect Liquid lookup aliases to the shared CMS snippet instead of copying the snippet into the plugin. Liquid may request any of these paths: `/color-tag-picker.liquid`, `/sections/color-tag-picker.liquid`, or `/snippets/color-tag-picker.liquid`.
 
@@ -204,7 +215,10 @@ For edit/create forms, match the Page edit footer pattern:
 
 ### Preserve Scroll During Structural Edits
 
-Preserve the current vertical scroll position when an edit-form action reloads the same page to add or remove structured content. Match the Worker CMS editor contract in `cms/views/sections/editor.liquid`:
+Preserve the current vertical scroll position when an edit-form action reloads
+the same page to add or remove structured content. Match the Worker CMS editor
+contract in
+`/Users/colin/Documents/code/workers/cms/views/sections/editor.liquid`:
 
 - Mark the main edit form with `data-editor-form`.
 - Store the scroll offset in `sessionStorage` under `cms-editor-scroll:<pathname>` before actions whose value prefix is `block-add`, `block-delete`, `item-add`, `item-delete`, `block-item-add`, or `block-item-delete`.

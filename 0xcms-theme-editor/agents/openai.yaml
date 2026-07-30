@@ -1,0 +1,4 @@
+interface:
+  display_name: "0xCMS Theme Editor"
+  short_description: "Maintain visual themes and browser previews"
+  default_prompt: "Use $0xcms-theme-editor to update or debug the 0xCMS visual theme editor and its theme storage or preview pipeline."

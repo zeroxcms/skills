@@ -4,17 +4,19 @@ description: >-
   Give a 0xCMS plugin a bespoke page editor — replacing the host's generic
   blueprint-driven form with your own UI — via the manifest `editViews` /
   `newViews` / `readViews` contract and the `/__plugin/edit` endpoint. Use this
-  whenever a task says "the edit screen for <page type> should look like X",
-  "make the editor match <product>", "custom editor for my plugin's pages", or
+  whenever a task says "the edit screen for a page type should look custom",
+  "make the editor match another product", "custom editor for my plugin's
+  pages", or
   when you are writing a plugin view that must POST back into the CMS save
   handler. It captures the dispatch contract, the CMS field-name grammar
-  (@attr, .field|lang, #<block>, custom-item arrays, block-add/delete actions),
+  (@attr, .field|lang, block-prefixed fields, custom-item arrays,
+  block-add/delete actions),
   the localization rule that decides `@name` vs `name`, the co-authoring
   presence bar (live multi-editor avatars + per-field editing highlight via
   `cmsEditPresence`) that every edit view should render, and the failure modes
   (silent fallback to the built-in editor, double-escaping, lost config on type
-  switch). Pair with zeroxcms-pagefield-types for the field controls themselves
-  and cms-plugin-tailwind for styling.
+  switch). Pair with zeroxcms-pagefield-types for controls and 0xcms-ui for
+  layout/styling conventions.
 ---
 
 # Plugin-rendered page editors in 0xCMS
@@ -29,10 +31,12 @@ Declare the page types you want to own in `src/manifest.json`:
 "readViews": ["report"]    // replaces the read-only screen
 ```
 
-The host (`cms/src/plugins/edit-view.ts`) then POSTs an `EditViewContext` JSON
-body to your Worker's `/__plugin/edit` (or `/__plugin/read`) and wraps whatever
-you return in the admin chrome. Legacy note: an `editViews` entry also owns the
-create screen unless a `newViews` entry says otherwise.
+The current host
+(`/Users/colin/Documents/code/workers/cms/src/features/plugins/edit-view.ts`)
+then POSTs an `EditViewContext` JSON body to your Worker's `/__plugin/edit` (or
+`/__plugin/read`) and wraps whatever you return in the admin chrome. Legacy
+note: an `editViews` entry also owns the create screen unless a `newViews`
+entry says otherwise.
 
 The context carries everything you need:
 
@@ -59,7 +63,8 @@ set in your fetch handler so `requireTenant` runs before dispatch.
 ```ts
 const secretRequired = path.startsWith('/__plugin/hooks/')
   || path.startsWith('/__plugin/admin')
-  || path === '/__plugin/edit';
+  || path === '/__plugin/edit'
+  || path === '/__plugin/read';
 ```
 
 ## Field-name grammar (what the save handler parses)
@@ -175,8 +180,9 @@ the page, a per-field "who's editing this input" highlight, and best-effort CRDT
 sync of the field values. Add it to each editor you build — it is one markup
 block, and the host does everything else.
 
-**What the host gives you for free** (`cms/src/plugins/edit-view.ts`), no
-manifest or asset entry required:
+**What the host gives you for free**
+(`workers/cms/src/features/plugins/edit-view.ts`), no manifest or asset entry
+required:
 
 - For `mode: 'edit'` with a real `page.id`, it injects a `cmsEditPresence`
   object — `{ pageId, currentUserId, userAvatar }` — into your client-view
@@ -254,5 +260,6 @@ curl -s localhost:<plugin-port>/__plugin/edit \
 
 Then render the returned `{template, data}` with the plugin's own `renderView`
 (it mirrors the host's auto-escape) and, for a screenshot, inline the host's
-compiled `cms/views/assets/admin.css`. In tests, assert on the field NAMES —
-they are the contract — not on the surrounding markup.
+compiled `/Users/colin/Documents/code/workers/cms/views/assets/admin.css`. In
+tests, assert on field NAMES — they are the contract — not on the surrounding
+markup.

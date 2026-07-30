@@ -9,12 +9,17 @@ description: >-
   block, page type, or language to such a site. Covers the scaffold, the
   published-DB read contract, the page_types/block_types seed that gives editors
   the admin UI, the lect→view-model→Liquid section pipeline, and the traps that
-  cost the most time (liquidjs asset roots, <details> as a nav, richtext storing
-  HTML, PII rows sharing live_pages). NOT for the CMS admin itself (see
-  zeroxcms-ui) or for plugin Workers (see zeroxcms-plugin-api).
+  cost the most time (LiquidJS asset roots, details-based navigation, richtext
+  storing HTML, PII rows sharing live_pages). Not for the CMS admin itself (see
+  0xcms-ui), plugin Workers (see 0xcms-plugin-api), or the visual theme editor
+  (see 0xcms-theme-editor).
 ---
 
 # A new public site on 0xCMS
+
+Treat `/Users/colin/Documents/code/workers/cms` as the current publisher and
+schema authority. Use `/Users/colin/Documents/code/frameworks/zeroxcms/cms`
+only when a task explicitly targets the older host copy.
 
 ## What you are building
 
@@ -34,6 +39,7 @@ Three existing implementations, in order of how much you should copy:
 | `projects/colorholicstyling/www` | The **closest template for a brand site**: Liquid sections, block registry, page/block-type seed, multilingual URL prefixes |
 | `workers/worker-web` | The generic reader: `data/published.ts`, `data/schedule.ts`, `security/http.ts` |
 | `workers/worker-rsvp` | The Liquid-over-assets view system (`src/templates/liquid.ts`), the R2 media proxy, `safeHtml` |
+| `frameworks/zeroxcms/worker-form` | Current minimal published-D1 reader with safe media, scheduling checks, and INSERT-only public submissions |
 
 ## Step 1 — pick the rendering shape
 
@@ -69,12 +75,13 @@ bucket_name = "worker-cms-media"
 binding = "CF_VERSION_METADATA"
 ```
 
-`package.json`: one runtime dep (`liquidjs`). **Pin
-`@cloudflare/workers-types` to the major that current `wrangler` peer-depends
-on** (v5 at time of writing) or `npm install` dies with `ERESOLVE`.
+`package.json`: keep runtime dependencies minimal (normally `liquidjs`). Match
+Wrangler, TypeScript, and `@cloudflare/workers-types` to a current sibling so
+their peer requirements stay compatible.
 
-Copy `migrations/published/0001_published_schema.sql` from worker-web (its copy
-adds `live_tags`) purely to bootstrap `wrangler dev --local` and tests.
+For local test bootstrap, copy the required published schema from
+`workers/cms/src/core/publish/schema.sql` into test fixtures only. Do not give
+the public Worker a deployable `migrations_dir`; Worker CMS owns that schema.
 
 ## Step 3 — the read layer (security-critical)
 
@@ -100,8 +107,10 @@ dedicated function and has no URL.
 
 Page types and block types are rows in the **CMS admin DB (`cms`)**, not the
 published one — `page_types` / `block_types`, converted to blueprint fragments
-by `src/utils/page-type-store.ts` / `block-type-store.ts`. Ship them as a seed
-file so editors get the admin UI:
+by `src/core/db/page-type-store.ts` / `block-type-store.ts` and merged by
+`src/core/db/content-config.ts`. These tables belong to the optional
+`runtime-content-types` feature. Ship a seed file when the site depends on
+runtime-defined editor types:
 
 ```bash
 npx wrangler d1 execute cms --remote --file=./seed/cms-content-types.sql
@@ -115,7 +124,7 @@ sqlite3 /tmp/t.db < cms/migrations/0001_initial_schema.sql
 sqlite3 /tmp/t.db < seed/cms-content-types.sql   # twice — prove idempotency
 ```
 
-Blueprint grammar (worker-cms `src/utils/lect.ts`):
+Blueprint grammar (Worker CMS `src/core/db/lect.ts`):
 
 | Entry | Stored as | Read with |
 | --- | --- | --- |

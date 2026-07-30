@@ -1,0 +1,4 @@
+interface:
+  display_name: "0xCMS Core Features"
+  short_description: "Maintain droppable CMS feature slices"
+  default_prompt: "Use $0xcms-core-features to add, move, or validate an optional feature in the current 0xCMS host."

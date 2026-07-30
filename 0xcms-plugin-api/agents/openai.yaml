@@ -1,0 +1,4 @@
+interface:
+  display_name: "0xCMS Plugin API"
+  short_description: "Build plugins, tenants, and the CMS API"
+  default_prompt: "Use $0xcms-plugin-api to create or update a 0xCMS Worker plugin and its authenticated CMS integration."

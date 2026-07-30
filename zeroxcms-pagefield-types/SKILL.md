@@ -3,20 +3,24 @@ name: zeroxcms-pagefield-types
 description: >-
   Add or modify a pagefield type (the admin form control behind a blueprint
   entry like `@score:range` or `body:richtext/md`) in the 0xCMS host at
-  frameworks/zeroxcms/cms. Use whenever a task needs an input control the CMS
-  doesn't have yet — star rating, slider/linear scale, file attachment, color,
-  a new picker — or says "add a field type", "the editor should show a X for
-  this field", or "make this reusable across plugins". Covers the
-  path-based registry (there is NO whitelist — the snippet file IS the
-  registration), the `field` view-model contract, the Tailwind rebuild that
-  makes new classes real, and the CSP rule that forces CSS-only interactivity.
+  workers/cms (or the older frameworks/zeroxcms/cms when explicitly targeted).
+  Use whenever a task needs an input control the CMS doesn't have yet — star
+  rating, slider/linear scale, file attachment, color, a new picker — or says
+  "add a field type", "the editor should show a new control", or "make this
+  reusable across plugins". Covers the path-based registry, the field
+  view-model contract, the Tailwind rebuild, shared plugin resolution, and the
+  CSP rule that forces CSS-only or approved-asset interactivity.
 ---
 
 # Pagefield types in 0xCMS
 
+Treat `/Users/colin/Documents/code/workers/cms` as the current host source.
+Use `/Users/colin/Documents/code/frameworks/zeroxcms/cms` only when the task
+explicitly targets the older pre-feature-slice copy.
+
 ## The registry is the filesystem
 
-`cms/src/templates/editor.ts` → `pageFieldTemplatePath()`:
+`workers/cms/src/templates/editor.ts` → `pageFieldTemplatePath()`:
 
 ```ts
 const typedPath = trimmed.includes('/') ? trimmed : `${trimmed}/basic`;
@@ -107,8 +111,9 @@ hand-editable, so they stay usable if the asset never loads.
 
 ## Custom CSS + the rebuild step
 
-Component CSS lives in `cms/styles/admin.css` (alongside `.richtext-md-preview`)
-and Tailwind scans `../views`, `../src/templates`, `../src/utils`.
+Component CSS lives in `cms/assets-source/admin.css` (alongside
+`.richtext-md-preview`). Tailwind scans the host templates, views, and feature
+sources through the current build config.
 
 **New classes are not real until you rebuild:**
 
@@ -122,14 +127,16 @@ no error. Verify with `grep -F ".the-class" views/assets/admin.css`.
 This matters doubly for plugins: **plugin admin fragments are styled by the
 host's compiled `admin.css`**, so a utility the host never emits is purged and
 silently dead inside the plugin too. Adding host snippets that use a class also
-makes that class available to every plugin. See cms-plugin-tailwind.
+makes that class available to every plugin. Use `$0xcms-ui` for the surrounding
+admin layout and styling conventions.
 
 ## Uploads
 
 `POST /admin/upload` is the host's upload endpoint: `media:upload` permission,
 IP rate limit, extension allowlist + MIME consistency + magic-byte sniffing
-(`cms/src/security/media.ts`), canonical content type (never the client's),
-25 MB cap, a `media_files` row, and it returns `/media/<key>` URLs.
+(`/Users/colin/Documents/code/workers/cms/src/features/media/security.ts`),
+canonical content type (never the client's), 25 MB cap, a `media_files` row,
+and it returns `/media/<key>` URLs.
 Script-capable formats (html, svg, xml) are rejected by design.
 
 It is **admin-only**. A public, unauthenticated surface (a public form, an RSVP
@@ -143,5 +150,5 @@ and mirror the validation posture (see the form plugin's `src/uploads.ts`).
 3. Group controls → `<fieldset>/<legend>`; interactivity → CSS or an existing
    approved asset, never inline JS.
 4. Sensible defaults so a bare blueprint entry (`@x:<type>`) works.
-5. `npx tsc --noEmit && npm test` in `cms` (snippets are covered by the view
-   tests; a broken Liquid tag fails there).
+5. `npm run type-check && npm test` in the current `workers/cms` host (snippets
+   are covered by the view tests; a broken Liquid tag fails there).
