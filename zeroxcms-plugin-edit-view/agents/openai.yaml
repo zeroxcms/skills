@@ -1,4 +1,0 @@
-interface:
-  display_name: "0xCMS Plugin Page Views"
-  short_description: "Build custom CMS edit, new, and read views"
-  default_prompt: "Use $zeroxcms-plugin-edit-view to build or debug a plugin-owned 0xCMS page editor or read view."

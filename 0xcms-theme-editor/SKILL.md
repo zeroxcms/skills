@@ -95,7 +95,8 @@ Keep one rendering implementation:
 
 Changing `/assets/theme-editor.js` or `/assets/theme-preview.js` changes its
 SRI hash; re-approve the asset in CMS plugin settings before expecting it to
-run.
+run. The full manifest→approval→SRI pipeline is in `0xcms-plugin-api` →
+`references/js-assets.md`.
 
 ## Values versus template schema
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "0xCMS Pagefield Types"
-  short_description: "Build reusable CMS field controls"
-  default_prompt: "Use $zeroxcms-pagefield-types to add or update a reusable pagefield control in the 0xCMS host."

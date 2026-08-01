@@ -1,0 +1,4 @@
+interface:
+  display_name: "0xCMS Events Plugin"
+  short_description: "Events, RSVP, EDM, check-in, and bulk imports"
+  default_prompt: "Use $0xcms-events-plugin to build or debug the 0xCMS events plugin, its guest lists, or its resumable import flows."

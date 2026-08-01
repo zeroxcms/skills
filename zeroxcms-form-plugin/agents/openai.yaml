@@ -1,4 +1,0 @@
-interface:
-  display_name: "0xCMS Form System"
-  short_description: "Maintain the form builder and public Worker"
-  default_prompt: "Use $zeroxcms-form-plugin to update or debug the 0xCMS form builder and its public form Worker."

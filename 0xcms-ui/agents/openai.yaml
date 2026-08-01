@@ -1,4 +1,0 @@
-interface:
-  display_name: "0xCMS UI"
-  short_description: "0xCMS admin layout, snippets, and mobile rules"
-  default_prompt: "Use $0xcms-ui to update a 0xCMS admin view or shared snippet so plugin UI matches the established patterns."

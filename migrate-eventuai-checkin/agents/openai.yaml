@@ -1,4 +1,0 @@
-interface:
-  display_name: "Migrate Eventuai Check-in"
-  short_description: "Migrate legacy Eventuai check-in app"
-  default_prompt: "Use $migrate-eventuai-checkin to migrate a legacy Eventuai check-in route, view, or behavior into the CMS check-in plugin."

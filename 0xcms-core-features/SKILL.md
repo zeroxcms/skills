@@ -7,9 +7,15 @@ description: Maintain the feature-sliced 0xCMS host in /Users/colin/Documents/co
 
 ## Source authority
 
-Use `/Users/colin/Documents/code/workers/cms` for the current feature-sliced
-host. `/Users/colin/Documents/code/frameworks/zeroxcms/cms` is the older
-monolithic copy; do not copy its paths or imports into the current host.
+This skill is about the **feature-sliced** host at
+`/Users/colin/Documents/code/workers/cms`.
+
+`/Users/colin/Documents/code/frameworks/zeroxcms/cms` is a second live host that
+also carries current code, but it is **monolithic** — `src/plugins/`,
+`src/utils/`, `src/security/`, `src/publish/`, Tailwind source at
+`styles/admin.css`, and no `cms.features.json`. None of the feature machinery
+below exists there. Do not copy its paths or imports into the feature-sliced
+host, and do not apply this skill's placement rules to it.
 
 Read before changing architecture:
 
@@ -93,8 +99,8 @@ in the provider.
   feature off excludes code, but bundled view assets and tests may still need
   explicit cleanup if source is deleted.
 
-For plugin platform work, also use `$0xcms-plugin-api`. For admin markup, use
-`$0xcms-ui`.
+For plugin platform work, also use `0xcms-plugin-api`. For admin markup and
+styling, use `0xcms-admin-ui`.
 
 ## Schema and migrations
 

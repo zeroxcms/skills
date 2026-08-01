@@ -1,0 +1,4 @@
+interface:
+  display_name: "0xCMS Admin UI"
+  short_description: "Admin layout, Tailwind, form controls, field types"
+  default_prompt: "Use $0xcms-admin-ui to update a 0xCMS admin view, plugin fragment, or field control so it matches the established patterns."

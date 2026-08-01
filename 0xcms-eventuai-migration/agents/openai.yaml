@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eventuai Migration"
+  short_description: "Port legacy Eventuai admin and check-in to plugins"
+  default_prompt: "Use $0xcms-eventuai-migration to migrate a legacy Eventuai route, view, or behavior into the CMS events or check-in plugin."
