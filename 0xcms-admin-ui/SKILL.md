@@ -51,22 +51,35 @@ consequences, and they are the #1 cause of "my style isn't working":
   silently dead** — and you cannot fix it by rebuilding, because the host does
   not scan the plugin. You must restrict yourself to the host's emitted set.
 
-Verify before trusting a class:
+Verify before trusting a class. Use `grep -a` — the minified `admin.css`
+contains a byte that trips grep's binary detection, and without `-a` grep exits
+silently with no output, which reads exactly like "class absent":
 
 ```bash
-grep -F ".the-class" views/assets/admin.css
-python scripts/check_classes.py path/to/admin.css --check "grid-cols-3 w-1/3 max-h-60"
+grep -aF ".the-class" views/assets/admin.css
+python3 scripts/check_classes.py path/to/admin.css --check "grid-cols-3 w-1/3 max-h-60"
 ```
 
 `references/tailwind-class-map.md` maps common UI pieces (header, card, table,
 button, form field, badge) to exact host-available utility strings, plus
-substitutions for the classes that are usually purged. Commonly **missing**:
-`grid-cols-3`, `w-1/3`, `items-start`, `bg-amber-100`, `line-through`, and most
-arbitrary values (`min-h-[18rem]`). Commonly **unnecessary**: `no-underline`,
-`box-border` — preflight already does both.
+substitutions for the classes that are usually purged.
 
-Substitutes when a class genuinely isn't available: use a present responsive
-grid (`grid grid-cols-2 sm:grid-cols-3`), an HTML attribute (`rows="16"` on a
+Measured against both hosts' `views/assets/admin.css` (2026-08-02) — re-check
+rather than trusting this list, it moves with the host's own markup:
+
+- **Missing:** `grid-cols-4`, `grid-cols-6`, `w-1/3`, `w-1/2`, `min-h-[18rem]`,
+  `bg-amber-100`, `line-through`.
+- **Unnecessary:** `no-underline`, `box-border` — also missing, but preflight
+  already does both, so you never need them.
+- **Present, despite looking exotic:** `grid-cols-3`, `sm:grid-cols-3`,
+  `items-start`, `max-h-60`, `inset-y-0`, `pr-9`, and the arbitrary values this
+  skill recommends (`min-w-[560px]`, `text-[2rem]`, `min-w-[10rem]`).
+
+Arbitrary-value classes are JIT-only, so one works **only** if the host happens
+to emit that exact value — check before using a new one.
+
+Substitutes when a class genuinely isn't available: use a present grid
+(`grid grid-cols-2 sm:grid-cols-3`), an HTML attribute (`rows="16"` on a
 textarea), or a small inline `style=""` — the host CSP allows
 `style-src 'self' 'unsafe-inline'`.
 

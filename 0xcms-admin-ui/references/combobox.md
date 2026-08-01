@@ -57,7 +57,10 @@ apiRoutes.get('/api/parent-tags', requirePermission('content:read'), async (c) =
 });
 ```
 
-- `requirePermission('content:read')` — read gate, matching the siblings.
+- `requirePermission('content:read')` for content lookups (parent-pages,
+  parent-tags, pages/:type). The **users** picker is gated on `content:write`
+  instead — it exposes account names, so match the sibling that fits your data,
+  don't assume `content:read` everywhere.
 - `q` → `%q%` with spaces turned into `%` (loose match); search name **and** slug.
 - `exclude` drops the record being edited (no self-parenting).
 - **`LIMIT 20`** always — the point is to never ship the whole table.

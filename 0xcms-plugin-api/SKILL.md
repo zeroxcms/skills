@@ -32,6 +32,7 @@ layouts**. Resolve every path against the repo you are actually editing.
 | Submission ingest | `src/core/db/submission-ingest.ts` | `src/utils/submission-ingest.ts` |
 | Form-once tokens | `src/core/auth/form-once.ts` | `src/utils/form-once.ts` |
 | Canonical-origin guard | `src/core/http/headers.ts` | `src/security/http.ts` |
+| Plugin state API | `src/features/plugins/{state.ts,api/state.ts}` | **not available** |
 | Tailwind source | `assets-source/admin.css` | `styles/admin.css` |
 
 Shared by both: `src/routes/admin/`, `src/templates/`, `views/`, `migrations/`.
@@ -85,8 +86,8 @@ plus the route-order tests.
   permissions, limits, credits, `publishTarget`, and i18n. Namespace permission
   and translation keys by plugin id.
 - Use `contentTypes.publishLect` to minimize fields copied into published data.
-- Keep durable content in CMS pages and lect. Use plugin KV/D1/R2 for secrets,
-  provider state, queues, caches, attachments, or other plugin-owned data.
+- Keep durable content in CMS pages and lect. Route everything else by owner —
+  see "Where state belongs" below.
 
 **Blueprint seeding gotcha.** `blueprintToLect` sets `lect[block] = [emptyItem]`
 for every nested blueprint block, and `createPage` merges it UNDER the plugin's
@@ -205,6 +206,50 @@ const cms = withCredits(new CmsClient(env, MANIFEST.id));
   separate premium wallet.
 
 Keep decorators structurally coupled to `CmsApiTransport`, not SDK internals.
+
+## Where state belongs
+
+Four stores, and the choice is about **who owns the fact**, not convenience:
+
+| Store | Holds | Why |
+| --- | --- | --- |
+| CMS pages + lect | durable authored content | versioned, published, admin-visible |
+| **Host plugin state** (`/__cms/state`) | anything describing ONE host's relationship with the outside world — a connected GitHub App installation, a linked account, per-host preferences, editor overrides | a plugin-side record outlives the host that owns it, is invisible to its admins, and is readable by whoever operates the plugin |
+| Plugin Worker **secrets** | credentials, tokens | plugin state is D1, plaintext at rest — **not** a secret store |
+| Plugin KV/D1/R2 | queues, caches, attachments, genuinely plugin-owned data | no host owns it |
+
+**Plugin state API** (feature-sliced host only — `src/features/plugins/api/state.ts`;
+the monolithic host does not have it):
+
+```ts
+import { pluginState } from '@lionrockjs/worker-cms-plugin';
+const state = pluginState(env, MANIFEST.id);      // scope defaults to env.CMS_TENANT_ID
+
+await state.put('github.installation', { id: 42 });
+const install = await state.get<{ id: number }>('github.installation'); // null if absent
+await state.list('github.');                       // entries by key prefix
+await state.delete('github.installation');
+```
+
+Routes: `GET /__cms/state?prefix=`, `GET|PUT|DELETE /__cms/state/:key`.
+
+Limits and failure modes — handle them, they are enforced:
+
+- Key: `^[a-z0-9._-]{1,64}$`.
+- Value: JSON, max **64 KiB** → `413 value_too_large`.
+- **100 keys per plugin** → `409 too_many_keys`. Only a *new* key is refused;
+  overwriting an existing key still works at the limit.
+- `get` returns `null` only for a genuine 404. Every other failure **throws** —
+  never treat "host unreachable" as "nothing stored", or you will re-create
+  state that already exists.
+- Reads are cached per isolate (default TTL 30 s), partitioned by tenant scope;
+  an empty scope disables caching rather than sharing it. Writes update the
+  cache immediately. Misses are deliberately not cached, so a record written by
+  another isolate (an OAuth callback that just connected an account) shows up on
+  the very next read.
+
+Prefer one key holding a structured record over many keys — the 100-key cap
+bounds the plugin, and a single key keeps a read-modify-write to one row.
 
 ## Client-side JavaScript and custom editors
 

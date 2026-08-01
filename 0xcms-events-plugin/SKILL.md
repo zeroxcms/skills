@@ -64,8 +64,9 @@ Host — **the two live hosts differ**; resolve against the repo you're editing:
 | `canonicalHostResponse`, `checkCrossSite` | `src/core/http/headers.ts` | `src/security/http.ts` |
 | submission ingest | `src/core/db/submission-ingest.ts` | `src/utils/submission-ingest.ts` |
 
-`MAX_BATCH=200`; each batch item merges `blueprintToLect ← stored ← incoming`
-lect.
+`MAX_BATCH = 100` (both hosts; over-size batches get
+`413 {error: 'batch_too_large'}`). Each batch item merges
+`blueprintToLect ← stored ← incoming` lect.
 
 ## Debugging "submit returns not found / 404 / 503"
 
@@ -138,14 +139,21 @@ Things that are NOT the cause (ruled out, don't chase them):
   (`/rsvp/<id>/dedupe`, `findDuplicateGuests`): groups only rows identical in
   name + every imported/custom field, always keeps copies with check-ins /
   responses / registration_ref, soft-deletes the rest to trash in budgeted
-  batches. Host-side fixes APPLIED 2026-07-08: migration 0011 adds expression
-  indexes on `json_extract(lect,'$._pointers.{mail_list,event,edm,contact}')`;
-  `GET /pages` inlines the (validated) pointer path as a SQL literal — SQLite
-  ignores expression indexes if the expression holds a bound parameter — and
-  honors `count=0` (returns total: -1, skips the COUNT scan). The plugin's
-  `listAll` sends `count=0` on follow-up pages via its own raw `listPage` (the
-  published SDK `list()` has no count knob). Run
-  `wrangler d1 migrations apply cms --remote` when deploying the host.
+  batches. Host-side fixes APPLIED 2026-07-08: expression indexes on
+  `json_extract(lect,'$._pointers.{mail_list,event,edm,contact}')`; `GET /pages`
+  inlines the (validated) pointer path as a SQL literal — SQLite ignores
+  expression indexes if the expression holds a bound parameter — and honors
+  `count=0` (returns total: -1, skips the COUNT scan). The plugin's `listAll`
+  sends `count=0` on follow-up pages via its own raw `listPage` (the published
+  SDK `list()` has no count knob).
+  **Where those indexes live now:** in the feature-sliced host they are the
+  droppable `plugin-pointer-indexes` feature
+  (`src/features/plugin-pointer-indexes/schema.sql`), assembled into the
+  generated `migrations/0001_initial_schema.sql` — there is no numbered
+  migration for them. On an existing database, enable them additively with
+  `npm run build:migrations -- --enable plugin-pointer-indexes` and then
+  `wrangler d1 migrations apply cms --remote`. In the monolithic host they are
+  part of the baseline schema.
 - **Never bulk-delete a whole child collection with `batchRemove`** — use
   `cms.deleteChildren(selector, pageType)` → host `DELETE /pages/children`:
   server-side, bounded (1000/call, plugin loops while `done=false`), trashes in
@@ -185,8 +193,9 @@ Things that are NOT the cause (ruled out, don't chase them):
   per-list/event membership).
 - **Styling and escaping** are covered by `0xcms-admin-ui`: plugin fragments use
   the host's purged Tailwind class set (verify with
-  `grep -F ".the-class" cms/views/assets/admin.css`; `bg-amber-100` and
-  `line-through` are NOT emitted, `bg-amber-50` is), and admin client views are
+  `grep -aF ".the-class" cms/views/assets/admin.css` — `-a` matters, the
+  minified CSS trips grep's binary detection; `bg-amber-100` and `line-through`
+  are NOT emitted, `bg-amber-50` is), and admin client views are
   auto-escaped so `| escape` double-escapes. The server-rendered email/QR set
   (`templates/edm-mjml.liquid`, `layout/mjml.liquid`, `sections/mjml/*`,
   `templates/qr.liquid`) goes through `renderLiquid` WITHOUT auto-escape and

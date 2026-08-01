@@ -7,16 +7,27 @@ shell under a **strict nonce CSP** (no `unsafe-inline`). Before insertion, the
 host's client renderer (`views/assets/client-render.js`) sanitizes the rendered
 HTML:
 
-- **Inline `<script>` bodies are emptied** (`script.textContent = ''`) and
-  **`on*` attributes / `javascript:` URLs are stripped.** Inline JS can never
-  run — don't write it.
-- **External `<script src>` tags are removed unless** the src points at this
-  exact CMS-served path for an asset that is BOTH declared in the plugin
-  manifest AND admin-approved:
-  `/admin/plugins/<plugin-id>/assets/<file>.js`
-- Approved scripts are rewritten in place: the host stamps `integrity` (SRI
-  sha384 pinned at approval time), the page `nonce`, and a `?r=<revision>`
-  cache-buster. Only then do they execute.
+- **Every `<script>` is REMOVED outright** (`script.remove()`) unless its `src`
+  points at this exact CMS-served path for an asset that is BOTH declared in the
+  plugin manifest AND admin-approved:
+  `/admin/plugins/<plugin-id>/assets/<file>.js`. An inline script has no `src`,
+  so it is always removed — inline JS can never run, don't write it.
+- **`on*` attributes and `javascript:` URLs are stripped** from every element.
+- Approved scripts are kept but rewritten, and author-supplied values for the
+  security-relevant attributes are never trusted: the host stamps `integrity`
+  (SRI sha384 pinned at approval time), the page `nonce` (required for the
+  renderer's `executeScripts()` to run it at all), a `?r=<revision>`
+  cache-buster, and clears any inline body carried alongside `src`
+  (`script.textContent = ''`). No `crossorigin` attribute — the asset endpoint
+  is same-origin and needs the admin session cookie, which `crossorigin` would
+  strip.
+- **`<link rel="stylesheet">` goes through the same approval path** — an
+  unapproved stylesheet is removed; an approved one gets `integrity` and the
+  revision query. So a plugin CAN ship its own CSS file, subject to the same
+  declare-then-approve flow. (Prefer the host's Tailwind first — see
+  `0xcms-admin-ui`.)
+- The approval lookup matches on the bare path, so a `?r=` or `#fragment` on
+  your src does not defeat it.
 
 Server side, `servePluginAsset` (in the admin-proxy route — see the
 Source authority table in SKILL.md) re-fetches the file from the plugin Worker

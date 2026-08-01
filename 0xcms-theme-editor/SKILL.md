@@ -37,7 +37,9 @@ as an actual page type.
 - Gate viewing with `theme-editor:view` and mutations/GitHub pushes with
   `theme-editor:write`.
 - Pass the signed-in user to CMS updates for acting-user attribution.
-- Keep `TENANTS` and `THEME_OVERRIDES` as separate KV bindings.
+- `TENANTS` KV is the tenant registry. `THEME_OVERRIDES` KV is now legacy-only
+  (see Overrides and publishing); overrides themselves live in host plugin
+  state.
 
 For multi-tenant deployments, put tenant-specific `GITHUB_TOKEN` or other
 settings in the tenant record's `vars`; `tenantClientEnv` overlays them last.
@@ -104,7 +106,7 @@ Keep the two edit modes separate:
 
 - **Values** changes the selected page's lect and saves through the CMS API.
 - **Schema** changes the Liquid bindings declared by a template section and
-  stores only differences in `THEME_OVERRIDES`.
+  stores only differences, in host plugin state.
 
 The inactive panel must be a disabled `fieldset` so its inputs cannot compete
 with the active panel. Preserve the `settings` URL mode and selected block.
@@ -122,23 +124,48 @@ over a genuine stored override.
 
 ## Overrides and publishing
 
-Key overrides by tenant CMS origin, theme id, and template id:
+**Overrides live in host-owned plugin state, not plugin KV** (`src/theme/overrides.ts`,
+`pluginState` from `@lionrockjs/worker-cms-plugin` → `/__cms/state`). The record
+belongs to the CMS that owns the theme configuration, so it stays visible to
+that host's admins and does not outlive the host in plugin KV.
+
+**One key per theme**, holding every template's overrides:
 
 ```text
-sections:<cms-origin>:<theme-id>:<template-id>
+theme.overrides.<theme-id>
 ```
 
-Store:
+One key per theme rather than per template makes reading them all a point read
+instead of a scan, keeps a read-modify-write to a single row, and bounds the key
+count by themes rather than themes × templates — which matters against the
+100-key-per-plugin cap (see `0xcms-plugin-api` → "Where state belongs").
 
-- hidden section keys, not a stale copy of the entire order;
-- changed section setting bindings only.
+Each template entry stores deltas only:
 
-Reads degrade to no overrides when `THEME_OVERRIDES` is unbound. Writes must
-fail visibly and point to:
-
-```bash
-npm run kv:setup -- --binding=THEME_OVERRIDES
+```ts
+{ hidden: string[],                              // section keys dropped from compiled order
+  settings: Record<string, Record<string,string>>, // per section, changed setting bindings
+  order: string[],                               // explicit editor order; new theme keys merged in
+  added: Record<string, { type: string }>,       // sections created before publish
+  deleted: string[] }                            // source sections removed before publish
 ```
+
+Nothing is cached on read: an override is read right back after it is written
+and must never be served stale, so a Hide toggle handled by one isolate is
+visible to the next request whichever isolate takes it.
+
+Two distinct failures — keep them distinct, the fixes differ:
+
+- `MissingOverrideStoreError` — the owning CMS could not be reached.
+- `UnknownTenantError` — the request carries no CMS connection at all, so there
+  is nothing to store against.
+
+**Legacy KV migration.** The pre-migration key was
+`sections:<tenant ref>:<theme-id>:<template-id>` in the plugin's own
+`THEME_OVERRIDES` KV. That binding still exists and is read **only** to migrate
+old records forward, deleting them afterward; `npm run theme:migrate-prefix`
+drives it. Do not write new overrides there, and do not treat an unbound
+`THEME_OVERRIDES` as an error on the write path any more.
 
 Publishing folds overrides into theme JSON and clears only what was applied.
 It is allowed only for writable R2 themes. `npm run theme:apply` is the local
@@ -185,7 +212,10 @@ Cover:
 - value saves and acting-user attribution;
 - override diffing, hidden keys, publish/apply clear order;
 - source changes while an override exists, reset-to-source behavior, and
-  write failures that must leave KV overrides intact;
+  write failures that must leave stored overrides intact;
+- legacy `THEME_OVERRIDES` KV records migrating forward into plugin state, and
+  being deleted only after a successful write;
+- unreachable-host vs unknown-tenant errors staying distinct;
 - tenant isolation;
 - GitHub clone/push and base-tree preservation;
 - missing bindings/tokens and permission failures.
