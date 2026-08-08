@@ -98,6 +98,36 @@ seeded empty `checkin:[{}]`); filter to rows with a real field set. Same trap
 for any nested block, and for "delete last item" leaving a repeater at zero when
 your reader assumes one.
 
+## Publish targets
+
+A manifest with `publishTarget: true` receives publish traffic as POSTs with a
+JSON body and `x-plugin-secret`. Publish calls are awaited (unlike lifecycle
+hooks) and a non-2xx is reported to the admin as a failed target; the optional
+endpoints may 404 harmlessly.
+
+| Endpoint | Body | When |
+| --- | --- | --- |
+| `/__plugin/publish/page` | `{ page, tags, tagCatalogue, publishedAt }` | a page is published |
+| `/__plugin/publish/remove` | `{ uuid }` | a page is unpublished or deleted |
+| `/__plugin/publish/tags` | `{ tags }` | tag created/edited/reordered, taxonomy re-grouped, or a full resync (optional) |
+| `/__plugin/publish/remove-tag` | `{ tagId }` | a tag is deleted (optional) |
+
+Two tag shapes, and confusing them is the usual bug:
+
+- `tags` are the page's **links** — `uuid` here is the *link* row's uuid, plus
+  `tag_id`, `weight`, and the tag's `slug` / `name` denormalized onto it.
+- `tagCatalogue` (and the `tags` array on `/publish/tags`) are the **tag rows** —
+  `id`, `uuid` (the *tag's*), `name`, `slug`, `weight`, `taxonomy_slug`,
+  `parent_tag`, `lect` — keyed by the CMS's own tag ids.
+
+A target that stores tags separately (the built-in D1 one) writes the catalogue
+and the links in the same pass, so a reader never sees a link whose id resolves
+to nothing. A target that emits self-contained documents (the R2 one) already
+has slug/name on each link and can ignore `tagCatalogue` entirely.
+
+Implement `/publish/tags` whenever the target keeps a catalogue: without it a
+rename only lands when every page carrying that tag is republished.
+
 ## Routing and authentication
 
 Leave only discovery resources public:

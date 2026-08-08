@@ -156,6 +156,18 @@ Apply to taxonomies, page types, block types, tags, roles, plugins, and plugin
 sections. Don't revert to `flex-col … sm:flex-row` when the Events list layout
 is what was asked for.
 
+**A header action cannot POST.** In the JSON-manifest headers
+(`views/templates/<name>.json` → `page-header` blocks), every block renders as an
+`<a href>` — the section has no form or button variant. A mutation action on a
+list screen therefore belongs in the page body: put it in the filter row as its
+own `<form method="POST">`, right-aligned with
+`sm:flex-row sm:items-center sm:justify-between`, using the secondary button
+classes. Admin → Tags "Sync published" is the reference. Gate it on the same
+permission the route requires (`canSync` ← `userCan(c, 'tag:write')`), and report
+the outcome by redirecting with a query flag the section renders as a banner
+(`rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700`, or
+the red equivalent).
+
 ## Buttons
 
 Icon plus text, text hidden on mobile:

@@ -132,6 +132,18 @@ This writes a new additive migration. Keep migration filenames globally unique
 across all features, preferably prefixed by feature id. Turning a feature off
 never drops existing tables.
 
+**The published database has no feature switches**, so `--enable` does not cover
+it: a new object in `src/core/publish/schema.sql` reaches fresh installs through
+the regenerated baseline and reaches *existing* published databases only through
+a hand-written `migrations/published/000N_<what>.sql`. Write it as idempotent
+`CREATE ... IF NOT EXISTS` copied from the fragment, apply it everywhere, then
+delete it — the baseline is the permanent home, and the file is scaffolding.
+D1 tracks migrations by name, so deleting an applied file is a no-op for
+databases that ran it, but any database that never did will silently never get
+the object. Number the next one past the deleted file's number, and keep
+`test/migration-contract.test.ts` (which asserts the exact published table set,
+applying only the baseline) in step — it is what proves the merge is complete.
+
 Do not hand-edit generated baseline SQL. Change the owning core/feature
 fragment, rebuild, and review the generated diff.
 

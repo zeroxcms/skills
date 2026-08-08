@@ -120,9 +120,9 @@ no such step — it ships with the host.
 
 - **Host** (`views/sections/`): editor Create/Save + publish/unpublish/
   restore-version/delete, page-type-form, block-type-form, tag-form,
-  taxonomy-form, role-form, user-form, plugin-form (Save/Approve/Re-approve/
-  Rotate secret), plugin-credits, plugin-limits, menu-settings, trash
-  (Restore/Empty), users (invite).
+  tags (Sync published), taxonomy-form, role-form, user-form, plugin-form
+  (Save/Approve/Re-approve/Rotate secret), plugin-credits, plugin-limits,
+  menu-settings, trash (Restore/Empty), users (invite).
 - **cms-plugin-events**: event-new, guest-list-form, edm-form, label-form,
   adhoc-checkin, guest-list-contacts, event-registrations, import flows
   (Preview/Confirm/Continue/Assign new IDs), edm-edit (Add block/row/Send test),

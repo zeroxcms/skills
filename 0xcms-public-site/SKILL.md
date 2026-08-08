@@ -7,10 +7,11 @@ description: >-
   reads the published DB", "render CMS pages on our own domain", or starts a
   fresh repo next to worker-web / worker-rsvp. Also use when ADDING a content
   block, page type, or language to such a site. Covers the scaffold, the
-  published-DB read contract, the page_types/block_types seed that gives editors
-  the admin UI, the lect→view-model→Liquid section pipeline, and the traps that
-  cost the most time (LiquidJS asset roots, details-based navigation, richtext
-  storing HTML, PII rows sharing live_pages). Not for the CMS admin itself (see
+  published-DB read contract, tag/taxonomy grouping off the published tag
+  catalogue, the page_types/block_types seed that gives editors the admin UI, the
+  lect→view-model→Liquid section pipeline, and the traps that cost the most time
+  (LiquidJS asset roots, details-based navigation, richtext storing HTML, PII
+  rows sharing the published pages table). Not for the CMS admin itself (see
   0xcms-admin-ui), plugin Workers (see 0xcms-plugin-api), or the visual theme
   editor (see 0xcms-theme-editor).
 ---
@@ -42,15 +43,23 @@ publishes. The CMS owns authoring; the site owns presentation.
 
 ```
 worker-cms ──publish──▶ cms-published (D1) ──read──▶ your Worker ──HTML──▶ visitor
-                        live_pages
-                        live_page_tags / live_tags
+                        pages
+                        page_tags   (page ↔ tag links)
+                        tags        (the tag catalogue)
 ```
+
+**Check the table names against the database you are actually reading.** The
+August 2026 rename made them `pages` / `page_tags` (they were `live_pages` /
+`live_page_tags`), and `tags` arrived later still — `workers/worker-web` and
+`frameworks/zeroxcms/worker-form` were never updated, so their `live_*` SQL is
+copy-paste poison for a new site on a current published DB. The colorholic
+website reader (below) uses the current names.
 
 Three existing implementations, in order of how much you should copy:
 
 | Repo | What to take from it |
 | --- | --- |
-| `projects/colorholicstyling/www` | The **closest template for a brand site**: Liquid sections, block registry, page/block-type seed, multilingual URL prefixes |
+| `projects/colorholicstyling/website` | The **closest template for a brand site**: Liquid sections, block registry, page/block-type seed, multilingual URL prefixes, current published table names |
 | `workers/worker-web` | The generic reader: `data/published.ts`, `data/schedule.ts`, `security/http.ts` |
 | `workers/worker-rsvp` | The Liquid-over-assets view system (`src/templates/liquid.ts`), the R2 media proxy, `safeHtml` |
 | `frameworks/zeroxcms/worker-form` | Current minimal published-D1 reader with safe media, scheduling checks, and INSERT-only public submissions |
@@ -103,7 +112,7 @@ Worker CMS owns that schema.
 One module owns D1 and issues nothing but parameterized `SELECT`s. Copy
 colorholic's `src/published.ts` and change the allowlist.
 
-**`live_pages` is shared.** worker-rsvp writes `rsvp_response` /
+**The published `pages` table is shared.** worker-rsvp writes `rsvp_response` /
 `rsvp_registration` rows there, and the events plugin auto-publishes `guest` /
 `mail_list` / `edm` / `label` pages. All of them carry PII.
 
@@ -117,6 +126,38 @@ const PUBLIC_TYPES = ['home', 'page', 'news'] as const;
 
 A singleton like `site_settings` stays **out** of that list: it is read by one
 dedicated function and has no URL.
+
+### Grouping by tag
+
+`page_tags` carries a bare `tag_id`; the `tags` table is what turns it into a
+name. **The ids are the same in both databases** — the publish path binds the
+CMS's own `tags.id` — so the join is direct:
+
+```sql
+SELECT p.* FROM pages p
+  JOIN page_tags pt ON pt.page_id = p.id
+  JOIN tags t ON t.id = pt.tag_id
+ WHERE t.slug = ? AND <your page-type allowlist>
+ ORDER BY pt.weight ASC, p.weight ASC
+```
+
+- **Group by `tags.taxonomy_slug`, not a taxonomy table.** `taxonomies` is not
+  published — a published page groups by tag, and the grouping key travels on
+  the tag. `tags.parent_tag` gives hierarchy (plain column, no FK: a child can
+  arrive before its parent, so tolerate a parent that resolves to nothing).
+- **Tag names are localized.** `tags.lect` uses the same grammar as a page's,
+  so read the display name with `localized(lect,'name',chain)` and keep
+  `tags.name` as the fallback. `tags.weight` is the editor's ordering.
+- **A tag row can be missing on an older published DB.** The catalogue arrived
+  after `page_tags` did, so `INNER JOIN tags` silently drops pages on a database
+  that has not been backfilled. Either `LEFT JOIN` and fall back to the id, or
+  have the CMS admin run **Admin → Tags → Sync published** once. Publishing a
+  page also upserts the tags it uses, so republishing fixes it page by page.
+
+`projects/colorholicstyling/website/src/published.ts` predates the catalogue —
+its `getTagBySlug()` is a stub returning `null` with a comment saying tag
+metadata cannot be resolved. That is no longer true; a new site should implement
+it against `tags` rather than copy the stub.
 
 ## Step 4 — the content model (this is the real deliverable)
 
